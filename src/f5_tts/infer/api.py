@@ -15,7 +15,7 @@ import sys
 # Improve path handling for resemble-enhance
 current_dir = Path(__file__).parent
 project_root = current_dir.parent.parent.parent  # Go up 3 levels from /src/f5_tts/infer/
-resemble_path = project_root / "third_party" / "resemble-custom" / "resemble_enhance"
+resemble_path = project_root / "src" /"third_party" / "resemble-custom" / "resemble_enhance"
 
 if resemble_path.exists():
     sys.path.append(str(resemble_path))
