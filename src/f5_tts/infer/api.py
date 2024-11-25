@@ -11,10 +11,22 @@ from cached_path import cached_path
 import torch
 import os
 import sys
-sys.path.append(f"../../{os.path.dirname(os.path.abspath(__file__))}/third_party/resemble-custom/resemble_enhance/")
-print("Current system paths:")
+
+# Improve path handling for resemble-enhance
+current_dir = Path(__file__).parent
+project_root = current_dir.parent.parent.parent  # Go up 3 levels from /src/f5_tts/infer/
+resemble_path = project_root / "third_party" / "resemble-custom" / "resemble_enhance"
+
+if resemble_path.exists():
+    sys.path.append(str(resemble_path))
+else:
+    raise ImportError(f"Required directory not found: {resemble_path}")
+
+# Optional: Debug logging
+print(f"Added to system path: {resemble_path}")
 for path in sys.path:
     print(f"- {path}")
+
 from resemble_enhance.enhancer.inference import load_enhancer
 
 from f5_tts.infer.utils_infer import (
