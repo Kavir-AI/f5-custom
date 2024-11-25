@@ -8,6 +8,7 @@ from pathlib import Path
 import base64
 import io
 from dataclasses import dataclass
+from cached_path import cached_path
 
 from f5_tts.infer.utils_infer import (
     infer_process,
@@ -60,19 +61,21 @@ async def load_models():
     
     # Load F5-TTS model
     model_cfg_f5 = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
+    f5_model_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))
     models["F5-TTS"] = load_model(
         DiT,
         model_cfg_f5,
-        "hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors",
+        f5_model_path,
         mel_spec_type="vocos"
     )
     
     # Load E2-TTS model
     model_cfg_e2 = dict(dim=1024, depth=24, heads=16, ff_mult=4)
+    e2_model_path = str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_1200000.safetensors"))
     models["E2-TTS"] = load_model(
         UNetT,
         model_cfg_e2,
-        "hf://SWivid/E2-TTS/E2TTS_Base/model_1200000.safetensors",
+        e2_model_path,
         mel_spec_type="vocos"
     )
 
