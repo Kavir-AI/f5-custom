@@ -27,7 +27,7 @@ print(f"Added to system path: {resemble_path}")
 for path in sys.path:
     print(f"- {path}")
 
-from resemble_enhance.enhancer.inference import load_enhancer
+from third_party.resemble-custom.resemble_enhance.enhancer.inference import load_enhancer
 
 from f5_tts.infer.utils_infer import (
     infer_process,
