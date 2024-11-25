@@ -61,7 +61,9 @@ async def load_models():
     
     # Load F5-TTS model
     model_cfg_f5 = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
+    print("Fetching F5-TTS model")
     f5_model_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))
+    print("F5-TTS model path:", f5_model_path)
     models["F5-TTS"] = load_model(
         DiT,
         model_cfg_f5,
@@ -71,7 +73,9 @@ async def load_models():
     
     # Load E2-TTS model
     model_cfg_e2 = dict(dim=1024, depth=24, heads=16, ff_mult=4)
+    print("Fetching E2-TTS model")
     e2_model_path = str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_1200000.safetensors"))
+    print("E2-TTS model path:", e2_model_path)
     models["E2-TTS"] = load_model(
         UNetT,
         model_cfg_e2,
@@ -149,8 +153,8 @@ async def text_to_speech(request: TTSRequest):
 
             voice = processed_voices[voice_name]
             audio, sample_rate, _ = infer_process(
-                voice["ref_audio"],
-                voice["ref_text"],
+                voice.ref_audio,
+                voice.ref_text,
                 text.strip(),
                 models[request.model],
                 vocoders[request.vocoder_name],
