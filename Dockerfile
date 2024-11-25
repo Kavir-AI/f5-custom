@@ -4,7 +4,7 @@ USER root
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-LABEL github_repo="https://github.com/SWivid/F5-TTS"
+LABEL github_repo="https://github.com/Kavir-AI/f5-custom"
 
 RUN set -x \
     && apt-get update \
