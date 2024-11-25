@@ -12,7 +12,7 @@ current_dir = Path(__file__).parent
 sys.path.append(str(current_dir))
 
 try:
-    from src.f5_tts.infer.api import app
+    from f5_tts.infer.api import app
     import uvicorn
     
     if __name__ == "__main__":
