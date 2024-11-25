@@ -1,9 +1,6 @@
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Tuple, Any
-import os
-import sys
-sys.path.append(f"../../{os.path.dirname(os.path.abspath(__file__))}/third_party/resemble-custom/resemble_enhance/")
 import numpy as np
 import soundfile as sf
 from pathlib import Path
@@ -12,6 +9,12 @@ import io
 from dataclasses import dataclass
 from cached_path import cached_path
 import torch
+import os
+import sys
+sys.path.append(f"../../{os.path.dirname(os.path.abspath(__file__))}/third_party/resemble-custom/resemble_enhance/")
+print("Current system paths:")
+for path in sys.path:
+    print(f"- {path}")
 from resemble_enhance.enhancer.inference import load_enhancer
 
 from f5_tts.infer.utils_infer import (
