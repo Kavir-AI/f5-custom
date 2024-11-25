@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Tuple, Any
 import os
+import sys
+sys.path.append(f"../../{os.path.dirname(os.path.abspath(__file__))}/third_party/resemble-custom")
 import numpy as np
 import soundfile as sf
 from pathlib import Path
@@ -9,6 +11,8 @@ import base64
 import io
 from dataclasses import dataclass
 from cached_path import cached_path
+import torch
+from resemble_enhance.enhancer.inference import load_enhancer
 
 from f5_tts.infer.utils_infer import (
     infer_process,
@@ -32,6 +36,7 @@ class TTSRequest(BaseModel):
     vocoder_name: str = "vocos"
     speed: float = 1.0
     output_format: str = "wav"
+    enhance_audio: bool = False
 
 @dataclass
 class ProcessedVoice:
@@ -70,6 +75,12 @@ async def load_models():
         f5_model_path,
         mel_spec_type="vocos"
     )
+    
+    # Load enhancer model
+    print("Loading enhancer model")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    models["enhancer"] = load_enhancer(run_dir=None, device=device)
+    print("Enhancer model loaded successfully")
     
     # Load E2-TTS model
     model_cfg_e2 = dict(dim=1024, depth=24, heads=16, ff_mult=4)
@@ -165,6 +176,16 @@ async def text_to_speech(request: TTSRequest):
 
         # Combine audio segments
         final_wave = np.concatenate(generated_audio_segments)
+
+        # Add enhancement if requested
+        if request.enhance_audio:
+            # Convert numpy array to torch tensor
+            wav_tensor = torch.from_numpy(final_wave).float()
+            # Enhance the audio using resemble enhance
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            enhanced_wave, sample_rate = enhance(wav_tensor, sample_rate, device)
+            # Convert back to numpy array
+            final_wave = enhanced_wave.cpu().numpy()
 
         # Instead of converting to base64, return the audio file directly
         buffer = io.BytesIO()
