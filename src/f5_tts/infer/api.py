@@ -20,8 +20,7 @@ from f5_tts.model import DiT, UNetT
 
 # Pydantic models for request validation
 class Voice(BaseModel):
-    ref_audio: str  # Base64 encoded audio file
-    ref_text: str
+    voice_name: str  # Changed from ref_audio and ref_text to just voice_name
 
 class TTSRequest(BaseModel):
     model: str = "F5-TTS"
@@ -113,52 +112,24 @@ async def text_to_speech(request: TTSRequest):
         # Modified voice processing
         processed_voices = {}
         
-        # Process main voice if it's not in cache
-        main_voice_key = None
-        for cached_name, cached_voice in processed_voice_cache.items():
-            if (base64.b64decode(request.main_voice.ref_audio) == Path(f"voices/{cached_name}.wav").read_bytes() and 
-                request.main_voice.ref_text == cached_voice.ref_text):
-                main_voice_key = cached_name
-                break
-                
-        if main_voice_key:
-            processed_voices["main"] = processed_voice_cache[main_voice_key]
-        else:
-            # Process uncached voice as before
-            audio_data = base64.b64decode(request.main_voice.ref_audio)
-            temp_audio_path = "temp_main.wav"
-            with open(temp_audio_path, "wb") as f:
-                f.write(audio_data)
-            
-            processed_audio, processed_text = preprocess_ref_audio_text(
-                temp_audio_path, 
-                request.main_voice.ref_text
+        # Get main voice from cache
+        if request.main_voice.voice_name not in processed_voice_cache:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Voice '{request.main_voice.voice_name}' not found. Available voices: {list(processed_voice_cache.keys())}"
             )
-            processed_voices["main"] = ProcessedVoice(processed_audio, processed_text)
-            os.remove(temp_audio_path)
+        
+        processed_voices["main"] = processed_voice_cache[request.main_voice.voice_name]
 
         # Process additional voices if present
         if request.voices:
             for voice_name, voice in request.voices.items():
-                # Check if voice is in cache
-                for cached_name, cached_voice in processed_voice_cache.items():
-                    if (base64.b64decode(voice.ref_audio) == Path(f"voices/{cached_name}.wav").read_bytes() and 
-                        voice.ref_text == cached_voice.ref_text):
-                        processed_voices[voice_name] = cached_voice
-                        break
-                else:
-                    # Process uncached voice as before
-                    audio_data = base64.b64decode(voice.ref_audio)
-                    temp_audio_path = f"temp_{voice_name}.wav"
-                    with open(temp_audio_path, "wb") as f:
-                        f.write(audio_data)
-                    
-                    processed_audio, processed_text = preprocess_ref_audio_text(
-                        temp_audio_path, 
-                        voice.ref_text
+                if voice.voice_name not in processed_voice_cache:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Voice '{voice.voice_name}' not found. Available voices: {list(processed_voice_cache.keys())}"
                     )
-                    processed_voices[voice_name] = ProcessedVoice(processed_audio, processed_text)
-                    os.remove(temp_audio_path)
+                processed_voices[voice_name] = processed_voice_cache[voice.voice_name]
 
         # Generate audio segments
         generated_audio_segments = []
@@ -206,3 +177,7 @@ async def text_to_speech(request: TTSRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
+
+@app.get("/available-voices")
+async def list_voices():
+    return {"voices": list(processed_voice_cache.keys())} 
