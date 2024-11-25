@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List, Tuple, Any
 import os
 import sys
-sys.path.append(f"../../{os.path.dirname(os.path.abspath(__file__))}/third_party/resemble-custom")
+sys.path.append(f"../../{os.path.dirname(os.path.abspath(__file__))}/third_party/resemble-custom/resemble_enhance/")
 import numpy as np
 import soundfile as sf
 from pathlib import Path
