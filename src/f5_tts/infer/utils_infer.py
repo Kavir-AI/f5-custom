@@ -133,7 +133,7 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
                 print(f"Removed conflicting path: {conflicting_path}")
                 path_was_present = True
             
-            from bigvgan import bigvgan
+            from third_party.BigVGAN import bigvgan
         except ImportError as e:
             import inspect
             current_frame = inspect.currentframe()
