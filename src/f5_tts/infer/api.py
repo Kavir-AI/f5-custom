@@ -28,8 +28,10 @@ print(f"Added to system path: {resemble_path}")
 for path in sys.path:
     print(f"- {path}")
 
+print("Loading resemble enhance")
 from third_party.resemble_custom.resemble_enhance.enhancer.inference import load_enhancer
 
+print("Loading utils_infer")
 from f5_tts.infer.utils_infer import (
     infer_process,
     load_model,
@@ -37,8 +39,11 @@ from f5_tts.infer.utils_infer import (
     preprocess_ref_audio_text,
     remove_silence_for_generated_wav,
 )
+
+print("Loading model")
 from f5_tts.model import DiT, UNetT
 
+print("Loading Pydantic models")
 # Pydantic models for request validation
 class Voice(BaseModel):
     voice_name: str  # Changed from ref_audio and ref_text to just voice_name
@@ -61,19 +66,20 @@ class ProcessedVoice:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load models on startup
-    # Load vocoder models
+    print("Loading vocoder models")
     vocoders["vocos"] = load_vocoder(
         vocoder_name="vocos",
         is_local=False,
         local_path="../checkpoints/vocos-mel-24khz"
     )
+    print("Vocos loaded successfully")
     vocoders["bigvgan"] = load_vocoder(
         vocoder_name="bigvgan",
         is_local=False,
         local_path="../checkpoints/bigvgan_v2_24khz_100band_256x"
     )
-    
+    print("Bigvgan loaded successfully")
+
     # Load F5-TTS model
     model_cfg_f5 = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
     print("Fetching F5-TTS model")
@@ -132,7 +138,9 @@ async def lifespan(app: FastAPI):
     print("Clearing models and vocoders")
 
 # Update FastAPI initialization to use lifespan
+print("Initializing FastAPI")
 app = FastAPI(title="F5/E2 TTS API", lifespan=lifespan)
+print("FastAPI initialized")
 
 # Global variables for models
 models = {}
