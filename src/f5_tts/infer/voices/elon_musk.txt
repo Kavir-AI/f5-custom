@@ -1,0 +1,1 @@
+ You drop the diameter by a factor of two and the cross-sectional area by a factor of four, so, uh, and the tunneling cost scales with the cross-sectional area. So that's roughly a half order of magnitude improvement right there.
