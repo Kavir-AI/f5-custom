@@ -126,11 +126,22 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
         vocoder = vocoder.eval().to(device)
     elif vocoder_name == "bigvgan":
         try:
+            conflicting_path = "/workspace/f5-custom/src/third_party/resemble_custom"
+            path_was_present = False
+            if conflicting_path in sys.path:
+                sys.path.remove(conflicting_path)
+                print(f"Removed conflicting path: {conflicting_path}")
+                path_was_present = True
+            
             from bigvgan import bigvgan
         except ImportError as e:
+            import inspect
+            current_frame = inspect.currentframe()
             raise ImportError(
                 f"BigVGAN module import failed: {str(e)}\n"
                 f"Current Python path:\n{chr(10).join(sys.path)}\n\n"
+                f"Import attempted from: {current_frame.f_code.co_filename}\n"
+                f"Current working directory: {os.getcwd()}\n\n"
                 "To use BigVGAN vocoder:\n"
                 "1. Initialize the submodule: 'git submodule update --init --recursive'\n"
                 "2. Follow BigVGAN setup in docs/VOCODER.md\n"
@@ -145,6 +156,11 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
 
         vocoder.remove_weight_norm()
         vocoder = vocoder.eval().to(device)
+    finally:
+        # Restore the path if it was present
+        if path_was_present:
+            sys.path.append(conflicting_path)
+            print(f"Restored conflicting path: {conflicting_path}")
     return vocoder
 
 
