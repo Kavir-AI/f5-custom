@@ -5,4 +5,3 @@
 [submodule "src/third_party/resemble_custom"]
 	path = src/third_party/resemble_custom
 	url = https://github.com/Kavir-AI/resemble-custom.git
-	branch = cdaf2a2c65be2756d82e80ca07923b705a82500c
