@@ -257,17 +257,18 @@ async def text_to_speech(request: TTSRequest):
 @app.post("/tts-clone")
 async def text_to_speech_with_clone(request: VoiceCloneRequest):
     async with tts_semaphore:
+        temp_audio_path = "temp_ref_audio.wav"
         try:
             # Decode base64 audio
             audio_bytes = base64.b64decode(request.ref_audio_base64)
-            audio_buffer = io.BytesIO(audio_bytes)
             
-            # Load the audio file using soundfile
-            ref_audio_data, sample_rate = sf.read(audio_buffer)
+            # Create a temporary file to store the audio
+            with open(temp_audio_path, "wb") as f:
+                f.write(audio_bytes)
             
-            # Remove the sample_rate parameter as it's not accepted
+            # Process the audio using the file path
             processed_audio, processed_text = preprocess_ref_audio_text(
-                ref_audio_data,  # Pass the numpy array directly
+                temp_audio_path,
                 request.ref_text
             )
 
@@ -306,6 +307,14 @@ async def text_to_speech_with_clone(request: VoiceCloneRequest):
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+            
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_audio_path):
+                try:
+                    os.remove(temp_audio_path)
+                except Exception as e:
+                    print(f"Error cleaning up temporary file: {e}")
 
 @app.get("/available-voices")
 async def list_voices():
