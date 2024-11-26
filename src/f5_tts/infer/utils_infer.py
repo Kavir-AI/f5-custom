@@ -126,7 +126,7 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
         vocoder = vocoder.eval().to(device)
     elif vocoder_name == "bigvgan":
         try:
-            conflicting_path = "/workspace/f5-custom/src/third_party/resemble_custom"
+            conflicting_path = "/workspace/f5-custom/src/third_party/resemble_custom/resemble_enhance"
             path_was_present = False
             if conflicting_path in sys.path:
                 sys.path.remove(conflicting_path)
