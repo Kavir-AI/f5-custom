@@ -29,7 +29,7 @@ for path in sys.path:
     print(f"- {path}")
 
 print("Loading resemble enhance")
-from third_party.resemble_custom.resemble_enhance.enhancer.inference import load_enhancer
+from third_party.resemble_custom.resemble_enhance.enhancer.inference import load_enhancer, enhance
 
 print("Loading utils_infer")
 from f5_tts.infer.utils_infer import (
