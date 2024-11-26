@@ -12,6 +12,7 @@ import torch
 import os
 import sys
 from contextlib import asynccontextmanager
+from asyncio import Semaphore
 
 # Improve path handling for resemble-enhance
 current_dir = Path(__file__).parent
@@ -147,96 +148,101 @@ models = {}
 vocoders = {}
 processed_voice_cache = {}
 
+# Initialize semaphore to allow only 1 request at a time
+tts_semaphore = Semaphore(1)
+
 @app.post("/tts")
 async def text_to_speech(request: TTSRequest):
-    if request.model not in models:
-        raise HTTPException(status_code=400, detail=f"Model {request.model} not supported")
-    
-    if request.vocoder_name not in vocoders:
-        raise HTTPException(status_code=400, detail=f"Vocoder {request.vocoder_name} not supported")
-    
-    if request.model == "E2-TTS" and request.vocoder_name != "vocos":
-        raise HTTPException(status_code=400, detail="E2-TTS only supports vocos vocoder")
-
-    try:
-        # Modified voice processing
-        processed_voices = {}
+    # Acquire semaphore before processing
+    async with tts_semaphore:
+        if request.model not in models:
+            raise HTTPException(status_code=400, detail=f"Model {request.model} not supported")
         
-        # Get main voice from cache
-        if request.main_voice.voice_name not in processed_voice_cache:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Voice '{request.main_voice.voice_name}' not found. Available voices: {list(processed_voice_cache.keys())}"
+        if request.vocoder_name not in vocoders:
+            raise HTTPException(status_code=400, detail=f"Vocoder {request.vocoder_name} not supported")
+        
+        if request.model == "E2-TTS" and request.vocoder_name != "vocos":
+            raise HTTPException(status_code=400, detail="E2-TTS only supports vocos vocoder")
+
+        try:
+            # Modified voice processing
+            processed_voices = {}
+            
+            # Get main voice from cache
+            if request.main_voice.voice_name not in processed_voice_cache:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Voice '{request.main_voice.voice_name}' not found. Available voices: {list(processed_voice_cache.keys())}"
+                )
+            
+            processed_voices["main"] = processed_voice_cache[request.main_voice.voice_name]
+
+            # Process additional voices if present
+            if request.voices:
+                for voice_name, voice in request.voices.items():
+                    if voice.voice_name not in processed_voice_cache:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Voice '{voice.voice_name}' not found. Available voices: {list(processed_voice_cache.keys())}"
+                        )
+                    processed_voices[voice_name] = processed_voice_cache[voice.voice_name]
+
+            # Generate audio segments
+            generated_audio_segments = []
+            for text_chunk in request.gen_text.split("["):
+                if not text_chunk.strip():
+                    continue
+                    
+                if "]" in text_chunk:
+                    voice_name, text = text_chunk.split("]", 1)
+                    if voice_name not in processed_voices:
+                        voice_name = "main"
+                else:
+                    voice_name, text = "main", text_chunk
+
+                voice = processed_voices[voice_name]
+                audio, sample_rate, _ = infer_process(
+                    voice.ref_audio,
+                    voice.ref_text,
+                    text.strip(),
+                    models[request.model],
+                    vocoders[request.vocoder_name],
+                    mel_spec_type=request.vocoder_name,
+                    speed=request.speed
+                )
+                generated_audio_segments.append(audio)
+
+            # Combine audio segments
+            final_wave = np.concatenate(generated_audio_segments)
+
+            # Add enhancement if requested
+            if request.enhance_audio:
+                # Convert numpy array to torch tensor
+                wav_tensor = torch.from_numpy(final_wave).float()
+                # Enhance the audio using resemble enhance
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                enhanced_wave, sample_rate = enhance(wav_tensor, sample_rate, device)
+                # Convert back to numpy array
+                final_wave = enhanced_wave.cpu().numpy()
+
+            # Instead of converting to base64, return the audio file directly
+            buffer = io.BytesIO()
+            sf.write(buffer, final_wave, sample_rate, format=request.output_format)
+            buffer.seek(0)
+
+            # Create appropriate content type based on format
+            content_type = "audio/wav" if request.output_format == "wav" else "audio/mpeg"
+            
+            return Response(
+                content=buffer.read(),
+                media_type=content_type,
+                headers={
+                    "Content-Disposition": f'attachment; filename="generated_audio.{request.output_format}"'
+                }
             )
-        
-        processed_voices["main"] = processed_voice_cache[request.main_voice.voice_name]
 
-        # Process additional voices if present
-        if request.voices:
-            for voice_name, voice in request.voices.items():
-                if voice.voice_name not in processed_voice_cache:
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"Voice '{voice.voice_name}' not found. Available voices: {list(processed_voice_cache.keys())}"
-                    )
-                processed_voices[voice_name] = processed_voice_cache[voice.voice_name]
-
-        # Generate audio segments
-        generated_audio_segments = []
-        for text_chunk in request.gen_text.split("["):
-            if not text_chunk.strip():
-                continue
-                
-            if "]" in text_chunk:
-                voice_name, text = text_chunk.split("]", 1)
-                if voice_name not in processed_voices:
-                    voice_name = "main"
-            else:
-                voice_name, text = "main", text_chunk
-
-            voice = processed_voices[voice_name]
-            audio, sample_rate, _ = infer_process(
-                voice.ref_audio,
-                voice.ref_text,
-                text.strip(),
-                models[request.model],
-                vocoders[request.vocoder_name],
-                mel_spec_type=request.vocoder_name,
-                speed=request.speed
-            )
-            generated_audio_segments.append(audio)
-
-        # Combine audio segments
-        final_wave = np.concatenate(generated_audio_segments)
-
-        # Add enhancement if requested
-        if request.enhance_audio:
-            # Convert numpy array to torch tensor
-            wav_tensor = torch.from_numpy(final_wave).float()
-            # Enhance the audio using resemble enhance
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            enhanced_wave, sample_rate = enhance(wav_tensor, sample_rate, device)
-            # Convert back to numpy array
-            final_wave = enhanced_wave.cpu().numpy()
-
-        # Instead of converting to base64, return the audio file directly
-        buffer = io.BytesIO()
-        sf.write(buffer, final_wave, sample_rate, format=request.output_format)
-        buffer.seek(0)
-
-        # Create appropriate content type based on format
-        content_type = "audio/wav" if request.output_format == "wav" else "audio/mpeg"
-        
-        return Response(
-            content=buffer.read(),
-            media_type=content_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="generated_audio.{request.output_format}"'
-            }
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e)) 
 
 @app.get("/available-voices")
 async def list_voices():
