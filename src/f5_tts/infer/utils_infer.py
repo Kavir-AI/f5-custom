@@ -2,9 +2,20 @@
 # Make adjustments inside functions, and consider both gradio and cli scripts if need to change func output format
 import os
 import sys
+from pathlib import Path
 
 os.environ["PYTOCH_ENABLE_MPS_FALLBACK"] = "1"  # for MPS device compatibility
-sys.path.append(f"../../{os.path.dirname(os.path.abspath(__file__))}/third_party/BigVGAN/")
+current_dir = Path(__file__).parent
+project_root = current_dir.parent.parent.parent  # Go up 3 levels from /src/f5_tts/infer/
+bigvgan_path = project_root / "src" / "third_party" / "BigVGAN"
+
+if bigvgan_path.exists():
+    sys.path.append(str(bigvgan_path))
+else:
+    raise ImportError(f"Required directory not found: {bigvgan_path}")
+
+# Optional: Debug logging
+print(f"Added to system path: {bigvgan_path}")
 
 import hashlib
 import re
