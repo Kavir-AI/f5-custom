@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
     # Load F5-TTS model
     model_cfg_f5 = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
     print("Fetching F5-TTS model")
-    f5_model_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))
+    f5_model_path = str(cached_path("hf://KavirAI/kavirtts/F5TTS_Base/model_1200000.safetensors"))
     print("F5-TTS model path:", f5_model_path)
     models["F5-TTS"] = load_model(
         DiT,

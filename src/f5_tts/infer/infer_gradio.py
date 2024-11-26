@@ -49,7 +49,7 @@ tts_model_choice = DEFAULT_TTS_MODEL
 vocoder = load_vocoder()
 
 
-def load_f5tts(ckpt_path=str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))):
+def load_f5tts(ckpt_path=str(cached_path("hf://KavirAI/kavirtts/F5TTS_Base/model_1200000.safetensors"))):
     F5TTS_model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
     return load_model(DiT, F5TTS_model_cfg, ckpt_path)
 
@@ -753,8 +753,8 @@ If you're having issues, try converting your reference audio to WAV or MP3, clip
         except FileNotFoundError:
             last_used_custom.parent.mkdir(parents=True, exist_ok=True)
             return [
-                "hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors",
-                "hf://SWivid/F5-TTS/F5TTS_Base/vocab.txt",
+                "hf://KavirAI/kavirtts/F5TTS_Base/model_1200000.safetensors",
+                "hf://KavirAI/kavirtts/F5TTS_Base/vocab.txt",
             ]
 
     def switch_tts_model(new_choice):
@@ -783,14 +783,14 @@ If you're having issues, try converting your reference audio to WAV or MP3, clip
                 choices=[DEFAULT_TTS_MODEL, "E2-TTS"], label="Choose TTS Model", value=DEFAULT_TTS_MODEL
             )
         custom_ckpt_path = gr.Dropdown(
-            choices=["hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"],
+            choices=["hf://KavirAI/kavirtts/F5TTS_Base/model_1200000.safetensors"],
             value=load_last_used_custom()[0],
             allow_custom_value=True,
             label="MODEL CKPT: local_path | hf://user_id/repo_id/model_ckpt",
             visible=False,
         )
         custom_vocab_path = gr.Dropdown(
-            choices=["hf://SWivid/F5-TTS/F5TTS_Base/vocab.txt"],
+            choices=["hf://KavirAI/kavirtts/F5TTS_Base/vocab.txt"],
             value=load_last_used_custom()[1],
             allow_custom_value=True,
             label="VOCAB FILE: local_path | hf://user_id/repo_id/vocab_file",

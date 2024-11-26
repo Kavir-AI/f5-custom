@@ -1086,7 +1086,7 @@ def vocab_extend(project_name, symbols, model_type):
         f.write("\n".join(vocab))
 
     if model_type == "F5-TTS":
-        ckpt_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.pt"))
+        ckpt_path = str(cached_path("hf://KavirAI/kavirtts/F5TTS_Base/model_1200000.pt"))
     else:
         ckpt_path = str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_1200000.pt"))
 
