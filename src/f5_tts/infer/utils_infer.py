@@ -125,9 +125,9 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
         vocoder.load_state_dict(state_dict)
         vocoder = vocoder.eval().to(device)
     elif vocoder_name == "bigvgan":
+        path_was_present = False
         try:
             conflicting_path = "/workspace/f5-custom/src/third_party/resemble_custom/resemble_enhance"
-            path_was_present = False
             if conflicting_path in sys.path:
                 sys.path.remove(conflicting_path)
                 print(f"Removed conflicting path: {conflicting_path}")
@@ -156,8 +156,6 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
 
         vocoder.remove_weight_norm()
         vocoder = vocoder.eval().to(device)
-    finally:
-        # Restore the path if it was present
         if path_was_present:
             sys.path.append(conflicting_path)
             print(f"Restored conflicting path: {conflicting_path}")
