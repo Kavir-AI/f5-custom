@@ -126,7 +126,7 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
         vocoder = vocoder.eval().to(device)
     elif vocoder_name == "bigvgan":
         try:
-            from third_party.BigVGAN import bigvgan
+            from bigvgan import bigvgan
         except ImportError:
             print("You need to follow the README to init submodule and change the BigVGAN source code.")
         if is_local:
