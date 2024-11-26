@@ -127,8 +127,15 @@ def load_vocoder(vocoder_name="vocos", is_local=False, local_path="", device=dev
     elif vocoder_name == "bigvgan":
         try:
             from bigvgan import bigvgan
-        except ImportError:
-            print("You need to follow the README to init submodule and change the BigVGAN source code.")
+        except ImportError as e:
+            raise ImportError(
+                f"BigVGAN module import failed: {str(e)}\n"
+                f"Current Python path:\n{chr(10).join(sys.path)}\n\n"
+                "To use BigVGAN vocoder:\n"
+                "1. Initialize the submodule: 'git submodule update --init --recursive'\n"
+                "2. Follow BigVGAN setup in docs/VOCODER.md\n"
+                "3. Ensure BigVGAN directory is in your Python path"
+            ) from e
         if is_local:
             """download from https://huggingface.co/nvidia/bigvgan_v2_24khz_100band_256x/tree/main"""
             vocoder = bigvgan.BigVGAN.from_pretrained(local_path, use_cuda_kernel=False)
