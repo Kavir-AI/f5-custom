@@ -60,6 +60,16 @@ class TTSRequest(BaseModel):
     output_format: str = "wav"
     enhance_audio: bool = False
 
+class VoiceCloneRequest(BaseModel):
+    model: str = "F5-TTS"
+    gen_text: str
+    ref_audio_base64: str
+    ref_text: str
+    vocoder_name: str = "vocos"
+    speed: float = 1.0
+    output_format: str = "wav"
+    enhance_audio: bool = False
+
 @dataclass
 class ProcessedVoice:
     ref_audio: Any  # Processed reference audio
@@ -243,6 +253,70 @@ async def text_to_speech(request: TTSRequest):
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e)) 
+
+@app.post("/tts-clone")
+async def text_to_speech_with_clone(request: VoiceCloneRequest):
+    # Acquire semaphore before processing
+    async with tts_semaphore:
+        if request.model not in models:
+            raise HTTPException(status_code=400, detail=f"Model {request.model} not supported")
+        
+        if request.vocoder_name not in vocoders:
+            raise HTTPException(status_code=400, detail=f"Vocoder {request.vocoder_name} not supported")
+        
+        if request.model == "E2-TTS" and request.vocoder_name != "vocos":
+            raise HTTPException(status_code=400, detail="E2-TTS only supports vocos vocoder")
+
+        try:
+            # Decode base64 audio
+            audio_bytes = base64.b64decode(request.ref_audio_base64)
+            audio_buffer = io.BytesIO(audio_bytes)
+            
+            # Load the audio file using soundfile
+            ref_audio_data, sample_rate = sf.read(audio_buffer)
+            
+            # Preprocess the reference audio and text
+            processed_audio, processed_text = preprocess_ref_audio_text(
+                ref_audio_data,  # Pass the numpy array directly
+                request.ref_text,
+                sample_rate=sample_rate
+            )
+
+            # Generate audio using the processed reference
+            audio, sample_rate, _ = infer_process(
+                processed_audio,
+                processed_text,
+                request.gen_text.strip(),
+                models[request.model],
+                vocoders[request.vocoder_name],
+                mel_spec_type=request.vocoder_name,
+                speed=request.speed
+            )
+
+            # Add enhancement if requested
+            if request.enhance_audio:
+                wav_tensor = torch.from_numpy(audio).float()
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                enhanced_wave, sample_rate = enhance(wav_tensor, sample_rate, device)
+                audio = enhanced_wave.cpu().numpy()
+
+            # Return the audio file
+            buffer = io.BytesIO()
+            sf.write(buffer, audio, sample_rate, format=request.output_format)
+            buffer.seek(0)
+
+            content_type = "audio/wav" if request.output_format == "wav" else "audio/mpeg"
+            
+            return Response(
+                content=buffer.read(),
+                media_type=content_type,
+                headers={
+                    "Content-Disposition": f'attachment; filename="generated_audio.{request.output_format}"'
+                }
+            )
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/available-voices")
 async def list_voices():
