@@ -1,6 +1,8 @@
 [submodule "src/third_party/BigVGAN"]
 	path = src/third_party/BigVGAN
 	url = https://github.com/NVIDIA/BigVGAN.git
+	branch = 7d2b454564a6c7d014227f635b7423881f14bdac
 [submodule "src/third_party/resemble_custom"]
 	path = src/third_party/resemble_custom
 	url = https://github.com/Kavir-AI/resemble-custom.git
+	branch = cdaf2a2c65be2756d82e80ca07923b705a82500c
