@@ -256,17 +256,7 @@ async def text_to_speech(request: TTSRequest):
 
 @app.post("/tts-clone")
 async def text_to_speech_with_clone(request: VoiceCloneRequest):
-    # Acquire semaphore before processing
     async with tts_semaphore:
-        if request.model not in models:
-            raise HTTPException(status_code=400, detail=f"Model {request.model} not supported")
-        
-        if request.vocoder_name not in vocoders:
-            raise HTTPException(status_code=400, detail=f"Vocoder {request.vocoder_name} not supported")
-        
-        if request.model == "E2-TTS" and request.vocoder_name != "vocos":
-            raise HTTPException(status_code=400, detail="E2-TTS only supports vocos vocoder")
-
         try:
             # Decode base64 audio
             audio_bytes = base64.b64decode(request.ref_audio_base64)
@@ -275,11 +265,10 @@ async def text_to_speech_with_clone(request: VoiceCloneRequest):
             # Load the audio file using soundfile
             ref_audio_data, sample_rate = sf.read(audio_buffer)
             
-            # Preprocess the reference audio and text
+            # Remove the sample_rate parameter as it's not accepted
             processed_audio, processed_text = preprocess_ref_audio_text(
                 ref_audio_data,  # Pass the numpy array directly
-                request.ref_text,
-                sample_rate=sample_rate
+                request.ref_text
             )
 
             # Generate audio using the processed reference
