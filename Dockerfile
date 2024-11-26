@@ -21,8 +21,25 @@ RUN git clone https://github.com/Kavir-AI/f5-custom.git \
     && git submodule update --init --recursive \
     && sed -i '8iimport sys\nsys.path.append(os.path.dirname(os.path.abspath(__file__)))' src/third_party/BigVGAN/bigvgan.py \
     && pip install -e . --no-cache-dir \
-    && cd src/third_party/resemble_custom \
-    && pip install -e . --no-cache-dir
+    && pip install --no-cache-dir \
+        celluloid>=0.2.0 \
+        deepspeed>=0.12.4 \
+        librosa>=0.10.1 \
+        matplotlib>=3.8.1 \
+        numpy>=1.26.2 \
+        omegaconf>=2.3.0 \
+        pandas>=2.1.3 \
+        ptflops>=0.7.1.2 \
+        rich>=13.7.0 \
+        scipy>=1.11.4 \
+        soundfile>=0.12.1 \
+        torch>=2.1.1 \
+        torchaudio>=2.1.1 \
+        torchvision>=0.16.1 \
+        tqdm>=4.66.1 \
+        resampy>=0.4.2 \
+        tabulate>=0.8.10 \
+        gradio>=4.8.0
 
 ENV SHELL=/bin/bash
 
