@@ -11,6 +11,7 @@ from cached_path import cached_path
 import torch
 import os
 import sys
+from contextlib import asynccontextmanager
 
 # Improve path handling for resemble-enhance
 current_dir = Path(__file__).parent
@@ -58,15 +59,9 @@ class ProcessedVoice:
     ref_audio: Any  # Processed reference audio
     ref_text: str
 
-app = FastAPI(title="F5/E2 TTS API")
-
-# Global variables for models
-models = {}
-vocoders = {}
-processed_voice_cache = {}
-
-@app.on_event("startup")
-async def load_models():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load models on startup
     # Load vocoder models
     vocoders["vocos"] = load_vocoder(
         vocoder_name="vocos",
@@ -129,6 +124,20 @@ async def load_models():
         processed_audio, processed_text = preprocess_ref_audio_text(str(voice_path), ref_text)
         processed_voice_cache[voice_name] = ProcessedVoice(processed_audio, processed_text)
         print(f"Successfully loaded and processed voice: {voice_name}")
+
+    yield  # Server is running and ready to accept requests
+    
+    # Cleanup (if needed) when the server shuts down
+    # For example: models.clear(), vocoders.clear()
+    print("Clearing models and vocoders")
+
+# Update FastAPI initialization to use lifespan
+app = FastAPI(title="F5/E2 TTS API", lifespan=lifespan)
+
+# Global variables for models
+models = {}
+vocoders = {}
+processed_voice_cache = {}
 
 @app.post("/tts")
 async def text_to_speech(request: TTSRequest):
