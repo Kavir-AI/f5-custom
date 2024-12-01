@@ -16,6 +16,7 @@ from asyncio import Semaphore
 from uuid import uuid4
 import boto3
 import json
+import tempfile
 
 # Improve path handling for resemble-enhance
 current_dir = Path(__file__).parent
@@ -214,10 +215,17 @@ async def text_to_speech(request: TTSRequest):
                         Key=get_voice_s3_key(request.main_voice.voice_name)
                     )
                     voice_data = json.loads(response['Body'].read().decode('utf-8'))
-                    processed_voices["main"] = ProcessedVoice(
-                        ref_audio=np.array(voice_data["processed_audio"]) if isinstance(voice_data["processed_audio"], list) else voice_data["processed_audio"],
-                        ref_text=voice_data["processed_text"]
-                    )
+                    
+                    # Create temporary file for the audio
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_audio:
+                        audio_bytes = base64.b64decode(voice_data["processed_audio_base64"])
+                        temp_audio.write(audio_bytes)
+                        temp_audio.flush()
+                        
+                        processed_voices["main"] = ProcessedVoice(
+                            ref_audio=temp_audio.name,
+                            ref_text=voice_data["processed_text"]
+                        )
                 except Exception as e:
                     raise HTTPException(
                         status_code=400,
@@ -233,6 +241,7 @@ async def text_to_speech(request: TTSRequest):
 
             # Process additional voices if present
             if request.voices:
+                custom_voice_temp_files = []  # Track only custom voice temp files
                 for voice_name, voice in request.voices.items():
                     if voice.voice_name.startswith("cv$$_"):
                         try:
@@ -241,11 +250,25 @@ async def text_to_speech(request: TTSRequest):
                                 Key=get_voice_s3_key(voice.voice_name)
                             )
                             voice_data = json.loads(response['Body'].read().decode('utf-8'))
-                            processed_voices[voice_name] = ProcessedVoice(
-                                ref_audio=np.array(voice_data["processed_audio"]) if isinstance(voice_data["processed_audio"], list) else voice_data["processed_audio"],
-                                ref_text=voice_data["processed_text"]
-                            )
+                            
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_audio:
+                                audio_bytes = base64.b64decode(voice_data["processed_audio_base64"])
+                                temp_audio.write(audio_bytes)
+                                temp_audio.flush()
+                                custom_voice_temp_files.append(temp_audio.name)
+                                
+                                processed_voices[voice_name] = ProcessedVoice(
+                                    ref_audio=temp_audio.name,
+                                    ref_text=voice_data["processed_text"]
+                                )
                         except Exception as e:
+                            # Clean up any created temp files for custom voices before raising the exception
+                            for temp_file in custom_voice_temp_files:
+                                try:
+                                    if os.path.exists(temp_file):
+                                        os.remove(temp_file)
+                                except Exception as cleanup_error:
+                                    print(f"Error cleaning up temporary file {temp_file}: {cleanup_error}")
                             raise HTTPException(
                                 status_code=400,
                                 detail=f"Custom voice '{voice.voice_name}' not found in S3: {str(e)}"
@@ -330,7 +353,7 @@ async def text_to_speech_with_clone(request: VoiceCloneRequest):
             with open(temp_audio_path, "wb") as f:
                 f.write(audio_bytes)
             
-            # Process the audio using the file path with empty ref_text
+            # Process the audio using the file path
             processed_audio, processed_text = preprocess_ref_audio_text(
                 temp_audio_path,
                 ""  # Default empty string for ref_text to enable transcription
@@ -347,9 +370,13 @@ async def text_to_speech_with_clone(request: VoiceCloneRequest):
                 speed=request.speed
             )
             
-            # If generation successful, upload to S3
+            # Read the processed audio file and convert to base64
+            with open(processed_audio, "rb") as audio_file:
+                processed_audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
+            
+            # Store the base64 audio and text
             voice_data = {
-                "processed_audio": processed_audio.tolist() if isinstance(processed_audio, np.ndarray) else processed_audio,
+                "processed_audio_base64": processed_audio_base64,
                 "processed_text": processed_text
             }
             
