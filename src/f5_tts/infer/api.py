@@ -124,11 +124,16 @@ async def lifespan(app: FastAPI):
         mel_spec_type="vocos"
     )
 
-    # Add voice preprocessing
+    # Define supported audio formats
+    SUPPORTED_AUDIO_FORMATS = ("wav", "mp3", "m4a")
+
+    # Update the voice files loading
     voices_dir = Path(__file__).parent / "voices"
-    voice_files = {
-        path.stem: path for path in voices_dir.glob("*.wav")
-    }
+    voice_files = {}
+    for ext in SUPPORTED_AUDIO_FORMATS:
+        voice_files.update({
+            path.stem: path for path in voices_dir.glob(f"*.{ext}")
+        })
     
     # Process each known voice
     for voice_name, voice_path in voice_files.items():
